@@ -97,9 +97,10 @@ class DBConfWindow(QDialog):
             self.password.setText(DBConfig.getInstance().password)
             self.dbName.setText(DBConfig.getInstance().database)
 
+    # Блокировка закрытие окна
     def closeEvent(self, event):
         if self._block_close:
-            event.ignore()  # Блокируем закрытие окна
+            event.ignore()
         else:
             event.accept()
 

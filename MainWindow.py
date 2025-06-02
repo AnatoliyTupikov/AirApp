@@ -31,7 +31,6 @@ class SegmentedWindow(QWidget):
         # Горизонтальный сплиттер
         h_splitter = QSplitter(Qt.Orientation.Horizontal)
 
-        # Виджеты для левой и правой части
         self.departure_panel = AirportGrid(self, "Departure")
         self.arrival_panel = AirportGrid(self, "Arrival")
 
