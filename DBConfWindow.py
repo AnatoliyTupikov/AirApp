@@ -4,6 +4,7 @@ from PyQt6.QtTest import QTest
 from PyQt6.QtWidgets import QMainWindow, QWidget, QDialog, QVBoxLayout, QLabel, QHBoxLayout, QLineEdit, QSpinBox, \
     QPushButton, QMessageBox
 
+import ValidationClass
 from DBconfig import DBConfig
 
 
@@ -89,12 +90,12 @@ class DBConfWindow(QDialog):
         self.load_label.raise_()
 
 
-        if parent.db is not None:
-            self.hostname.setText(parent.db.hostname)
-            self.port.setValue(parent.db.port)
-            self.username.setText(parent.db.username)
-            self.password.setText(parent.db.password)
-            self.dbName.setText(parent.db.database)
+        if DBConfig.getInstance() is not None:
+            self.hostname.setText(DBConfig.getInstance().hostname)
+            self.port.setValue(DBConfig.getInstance().port)
+            self.username.setText(DBConfig.getInstance().username)
+            self.password.setText(DBConfig.getInstance().password)
+            self.dbName.setText(DBConfig.getInstance().database)
 
     def closeEvent(self, event):
         if self._block_close:
@@ -130,7 +131,7 @@ class DBConfWindow(QDialog):
         elem_container.setLayout(elem_layout)
         return elem_container, elem_lin_edit
 
-    def GetDBconfig(self):
+    def GetDbConfigFromForm(self):
         db = DBConfig()
         db.hostname = self.hostname.text()
         db.port = self.port.value()
@@ -140,21 +141,6 @@ class DBConfWindow(QDialog):
 
         return db
 
-    def SaveDbToConfig(self, dbconfig):
-        try:
-            dbconfig.CheckDbConnection()
-        except Exception as e:
-            QMessageBox.critical(self, "Error", f"Failed connect to DB: {str(e)}",
-                                 QMessageBox.StandardButton.Ok)
-            return
-        try:
-            DBConfig.SetDbConfigToConfig(self.parent().confpath,dbconfig)
-            self.parent().db = dbconfig
-        except Exception as e:
-            QMessageBox.critical(self, "Error", f"Failed save the DB configuration: {str(e)}",
-                                 QMessageBox.StandardButton.Ok)
-            return
-        QMessageBox.information(self, "Success", "Connection established")
 
     def setConfig(self):
         x = (self.width() - self.load_label.width()) // 2
@@ -167,20 +153,28 @@ class DBConfWindow(QDialog):
         self.load_label.show()
 
         QTest.qWait(2000)
-        self.SaveDbToConfig(self.GetDBconfig())
-
-        self.setEnabled(True)
-        self._block_close = False
-        self.load_label.hide()
+        try:
+            self.GetDbConfigFromForm().SaveDb(self.parent().confpath)
+        except (KeyError, TypeError, AttributeError, FileNotFoundError,
+                PermissionError, OSError, ValueError) as e:
+            QMessageBox.critical(self, "Error", f"Failed save the DB configuration: {str(e)}",
+                                 QMessageBox.StandardButton.Ok)
+            return
+        except Exception as e:
+            QMessageBox.critical(self, "Error", f"Failed connect to DB: {str(e)}",
+                                 QMessageBox.StandardButton.Ok)
+            return
+        finally:
+            self.setEnabled(True)
+            self._block_close = False
+            self.load_label.hide()
+        self.parent().LoadData()
+        QMessageBox.information(self, "Success", "Connection established")
 
     def editingValidation(self):
         sender = self.sender()
-        if sender.text() == "" or sender.text() is None:
-            sender.setStyleSheet("border: 2px solid red;")
-            sender.setToolTip("Value cannot be null")
-        else:
-            sender.setStyleSheet("border: 1px solid black;")
-            sender.setToolTip(sender.text())
+        if sender.text().strip() == "": ValidationClass.Validation.ErrorTxtBoxTemplateOn(sender, "The value cannot be null.")
+        else: ValidationClass.Validation.ErrorTxtBoxTemplateOff(sender)
         self.CheckAllTxtBoxes()
 
 
